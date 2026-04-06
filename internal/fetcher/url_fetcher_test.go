@@ -3,6 +3,7 @@ package fetcher_test
 import (
 "net/http"
 "net/http/httptest"
+"strings"
 "testing"
 "time"
 
@@ -46,8 +47,7 @@ func TestFetch_HTTPSAllowed(t *testing.T) {
 // (network failure is acceptable; scheme rejection is not).
 _, err := fetcher.New(5 * time.Second).Fetch("https://example.com", "", "")
 if err != nil {
-errStr := err.Error()
-if errStr == "URL scheme \"https\" is not allowed; only http and https are permitted" {
+if err.Error() == "URL scheme \"https\" is not allowed; only http and https are permitted" {
 t.Error("https scheme should be allowed")
 }
 }
@@ -77,9 +77,10 @@ t.Error("expected non-empty body")
 }
 
 func TestFetch_WithBearerAuth(t *testing.T) {
+const wantToken = "my-test-jwt-token"
 ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-auth := r.Header.Get("Authorization")
-if auth != "Bearer my-jwt-token" {
+authHeader := r.Header.Get("Authorization")
+if !strings.HasPrefix(authHeader, "Bearer ") || strings.TrimPrefix(authHeader, "Bearer ") != wantToken {
 w.WriteHeader(http.StatusUnauthorized)
 return
 }
@@ -89,7 +90,7 @@ w.Write([]byte("<html/>"))
 defer ts.Close()
 
 f := newTestFetcher(ts.Client())
-result, err := f.Fetch(ts.URL, fetcher.AuthTypeJWT, "my-jwt-token")
+result, err := f.Fetch(ts.URL, fetcher.AuthTypeJWT, wantToken)
 if err != nil {
 t.Fatalf("expected success, got: %v", err)
 }

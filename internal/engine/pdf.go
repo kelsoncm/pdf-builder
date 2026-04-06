@@ -85,14 +85,14 @@ func buildArgs(options map[string]string, input, output string) []string {
 	args := []string{"--quiet"}
 
 	optionMap := map[string]string{
-		"page_size":   "--page-size",
-		"orientation": "--orientation",
-		"margin_top":  "--margin-top",
+		"page_size":     "--page-size",
+		"orientation":   "--orientation",
+		"margin_top":    "--margin-top",
 		"margin_bottom": "--margin-bottom",
-		"margin_left": "--margin-left",
-		"margin_right": "--margin-right",
-		"encoding":    "--encoding",
-		"dpi":         "--dpi",
+		"margin_left":   "--margin-left",
+		"margin_right":  "--margin-right",
+		"encoding":      "--encoding",
+		"dpi":           "--dpi",
 	}
 
 	for key, value := range options {
