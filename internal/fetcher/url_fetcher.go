@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -35,11 +37,32 @@ type FetchResult struct {
 	ContentType string
 }
 
-// Fetch retrieves the content at url, applying auth if provided.
-func (f *URLFetcher) Fetch(url string, authType AuthType, authCredential string) (*FetchResult, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+// validateURL checks that the URL uses an allowed scheme (http or https only)
+// to prevent SSRF attacks via file://, ftp://, etc.
+func validateURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, fmt.Errorf("building request for %q: %w", url, err)
+		return fmt.Errorf("invalid URL %q: %w", rawURL, err)
+	}
+	scheme := strings.ToLower(parsed.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("URL scheme %q is not allowed; only http and https are permitted", scheme)
+	}
+	if parsed.Host == "" {
+		return fmt.Errorf("URL %q has no host", rawURL)
+	}
+	return nil
+}
+
+// Fetch retrieves the content at rawURL, applying auth if provided.
+func (f *URLFetcher) Fetch(rawURL string, authType AuthType, authCredential string) (*FetchResult, error) {
+	if err := validateURL(rawURL); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request for URL: %w", err)
 	}
 
 	switch authType {
@@ -48,24 +71,24 @@ func (f *URLFetcher) Fetch(url string, authType AuthType, authCredential string)
 	case AuthTypeToken:
 		req.Header.Set("Authorization", "Bearer "+authCredential)
 	case AuthTypeBasic:
-		// authCredential should be "user:password" in plain text or already Base64.
+		// authCredential should be "user:password" in plain text.
 		encoded := base64.StdEncoding.EncodeToString([]byte(authCredential))
 		req.Header.Set("Authorization", "Basic "+encoded)
 	}
 
 	resp, err := f.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetching %q: %w", url, err)
+		return nil, fmt.Errorf("fetching URL: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("remote server returned %d for %q", resp.StatusCode, url)
+		return nil, fmt.Errorf("remote server returned status %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response body from %q: %w", url, err)
+		return nil, fmt.Errorf("reading response body: %w", err)
 	}
 
 	return &FetchResult{
