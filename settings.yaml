@@ -1,0 +1,19 @@
+server:
+  port: 8080
+  read_timeout: 30s
+  write_timeout: 120s
+
+wkhtmltopdf:
+  binary_path: "/usr/local/bin/wkhtmltopdf"
+  timeout_seconds: 60
+  default_options:
+    page_size: "A4"
+    encoding: "UTF-8"
+
+users:
+  - username: "sistema_legado"
+    token: "tk_abc123xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    description: "Sistema legado de relatórios"
+  - username: "painel_admin"
+    token: "tk_xyz789xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    description: "Painel administrativo"
